@@ -41,6 +41,7 @@ import { SiteApplication } from '../site-applications/site-applications.entity';
 import { createPoint } from '../utils/coordinates';
 import { Sources } from './sources.entity';
 import { getCollectionData } from '../utils/collections.utils';
+import { getHistoricalCollectionData } from '../utils/historical-collection.utils';
 import { LatestData } from '../time-series/latest-data.entity';
 import { getYouTubeVideoId } from '../utils/urls';
 import {
@@ -155,6 +156,25 @@ export class SitesService {
     });
   }
 
+  private async collectionDataForDate(sites: Site[], asOf?: string) {
+    if (asOf === undefined) {
+      return getCollectionData(sites, this.latestDataRepository);
+    }
+
+    try {
+      return await getHistoricalCollectionData(
+        sites.map((site) => site.id),
+        this.dailyDataRepository,
+        asOf,
+      );
+    } catch (error) {
+      if (error instanceof RangeError) {
+        throw new BadRequestException('asOf must be a valid UTC date (YYYY-MM-DD)');
+      }
+      throw error;
+    }
+  }
+
   async find(filter: FilterSiteDto): Promise<Site[]> {
     const query = this.sitesRepository.createQueryBuilder('site');
 
@@ -198,10 +218,7 @@ export class SitesService {
       .andWhere('display = true')
       .getMany();
 
-    const mappedSiteData = await getCollectionData(
-      res,
-      this.latestDataRepository,
-    );
+    const mappedSiteData = await this.collectionDataForDate(res, filter.asOf);
 
     const hasHoboDataSet = await hasHoboDataSubQuery(this.sourceRepository);
 
@@ -223,7 +240,7 @@ export class SitesService {
     }));
   }
 
-  async findOne(id: number): Promise<Site> {
+  async findOne(id: number, asOf?: string): Promise<Site> {
     const site = await getSite(
       id,
       this.sitesRepository,
@@ -246,10 +263,7 @@ export class SitesService {
 
     const videoStream = await this.checkVideoStream(site);
 
-    const mappedSiteData = await getCollectionData(
-      [site],
-      this.latestDataRepository,
-    );
+    const mappedSiteData = await this.collectionDataForDate([site], asOf);
 
     const maskedSpotterApiToken = site.spotterApiToken
       ? `****${site.spotterApiToken?.slice(-4)}`
