@@ -27,7 +27,7 @@ export function historicalUtcRange(day: string): {
   startInclusive: Date;
   endExclusive: Date;
 } {
-  if (!/^\\d{4}-\\d{2}-\\d{2}$/.test(day)) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
     throw new RangeError('asOf must be a YYYY-MM-DD UTC date');
   }
 
