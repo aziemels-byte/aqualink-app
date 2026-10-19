@@ -24,6 +24,9 @@ type CollectionDataDtoType = Partial<
 >;
 
 export class CollectionDataDto implements CollectionDataDtoType {
+  @ApiPropertyOptional({ example: '2024-03-01' })
+  observedOn?: string;
+
   @ApiPropertyOptional({ example: 28.05 })
   bottomTemperature?: number;
 
