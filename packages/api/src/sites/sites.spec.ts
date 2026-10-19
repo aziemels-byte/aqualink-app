@@ -113,6 +113,36 @@ export const siteTests = () => {
     expect(rsp.body.maskedSpotterApiToken).toBeUndefined();
   });
 
+  it.each(['invalid', '2024-02-30', '2024-2-03'])(
+    'GET /sites rejects malformed historical date %s',
+    async (asOf) => {
+      const rsp = await request(app.getHttpServer())
+        .get('/sites')
+        .query({ asOf });
+      expect(rsp.status).toBe(400);
+    },
+  );
+
+  it('GET /sites/:id rejects a non-existent historical calendar date', async () => {
+    const rsp = await request(app.getHttpServer())
+      .get(`/sites/${siteId}`)
+      .query({ asOf: '2023-02-29' });
+    expect(rsp.status).toBe(400);
+  });
+
+  it('GET /sites?asOf never silently falls back to live data', async () => {
+    const rsp = await request(app.getHttpServer())
+      .get('/sites')
+      .query({ asOf: '2000-01-01' });
+    expect(rsp.status).toBe(200);
+    expect(
+      rsp.body.every(
+        (site: { collectionData?: Record<string, unknown> }) =>
+          !site.collectionData || Object.keys(site.collectionData).length === 0,
+      ),
+    ).toBe(true);
+  });
+
   it('GET /:id/daily_data', async () => {
     const rsp = await request(app.getHttpServer())
       .get(`/sites/${californiaSite.id}/daily_data`)
